@@ -568,7 +568,6 @@ body.andon {
     grid-column: auto;
   }
 
-  /* Odd last weather tile (Rain/Wind count) spans full width when alone */
   .metrics-hero .metric:nth-child(5):last-child {
     grid-column: 1 / -1;
   }
@@ -650,8 +649,117 @@ body.andon {
   }
 }
 
+/* JS fallback when a cached stylesheet misses the media query */
+body.andon-narrow {
+  overflow: auto !important;
+  cursor: auto !important;
+  height: auto !important;
+  min-height: 100% !important;
+}
+
+body.andon-narrow .andon-header {
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "brand status"
+    "brand clock";
+  gap: 0.55rem 0.85rem;
+  padding: 0.85rem 1rem 0.7rem;
+  align-items: start;
+}
+
+body.andon-narrow .andon-brand-block { grid-area: brand; min-width: 0; }
+body.andon-narrow .andon-system { grid-area: status; justify-self: end; }
+body.andon-narrow .andon-clock {
+  grid-area: clock;
+  justify-self: end;
+  align-self: end;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+body.andon-narrow .andon-header h1 {
+  font-size: 1.35rem;
+  line-height: 1.15;
+}
+
+body.andon-narrow .andon-main {
+  height: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
+}
+
+body.andon-narrow .andon-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+body.andon-narrow .aqi-value {
+  font-size: clamp(3.4rem, 18vw, 5.5rem);
+}
+
+body.andon-narrow .metrics-hero,
+body.andon-narrow .metrics-secondary {
+  display: grid;
+  height: auto;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: none;
+  gap: 0.55rem;
+  align-content: start;
+}
+
+body.andon-narrow .metrics-hero .metric:nth-child(n) {
+  grid-column: auto;
+}
+
+body.andon-narrow .metrics-hero .metric:nth-child(5):last-child {
+  grid-column: 1 / -1;
+}
+
+body.andon-narrow .metric {
+  container-type: normal;
+  min-height: 4.75rem;
+  padding: 0.65rem 0.7rem 0.7rem;
+}
+
+body.andon-narrow .metric .value,
+body.andon-narrow .metrics-secondary .metric .value {
+  font-size: 1.55rem;
+}
+
+body.andon-narrow .metric .label {
+  font-size: 0.68rem;
+}
+
+body.andon-narrow .metric .value-row {
+  flex: 0 0 auto;
+}
+
+body.andon-narrow .station-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+body.andon-narrow .station-cell {
+  container-type: normal;
+  min-height: 6.5rem;
+  padding: 0.7rem 0.75rem 0.75rem;
+}
+
+body.andon-narrow .station-primary {
+  font-size: 1.85rem;
+  margin: 0.15rem 0 0;
+  flex: 0 0 auto;
+}
+
 @media (max-width: 420px) {
-  .andon-header {
+  .andon-header,
+  body.andon-narrow .andon-header {
     grid-template-columns: 1fr;
     grid-template-areas:
       "brand"
@@ -660,21 +768,36 @@ body.andon {
   }
 
   .andon-system,
-  .andon-clock {
+  .andon-clock,
+  body.andon-narrow .andon-system,
+  body.andon-narrow .andon-clock {
     justify-self: start;
   }
 
-  .andon-clock {
+  .andon-clock,
+  body.andon-narrow .andon-clock {
     font-size: 1.2rem;
   }
 
-  .metrics-hero,
-  .metrics-secondary,
-  .station-strip {
-    grid-template-columns: 1fr;
+  .andon-header h1,
+  body.andon-narrow .andon-header h1 {
+    font-size: 1.2rem;
   }
 
-  .metrics-hero .metric:nth-child(5):last-child {
-    grid-column: auto;
+  .metric,
+  body.andon-narrow .metric {
+    min-height: 5.1rem;
+  }
+
+  .metric .value,
+  .metrics-secondary .metric .value,
+  body.andon-narrow .metric .value,
+  body.andon-narrow .metrics-secondary .metric .value {
+    font-size: 1.7rem;
+  }
+
+  .station-primary,
+  body.andon-narrow .station-primary {
+    font-size: 2rem;
   }
 }

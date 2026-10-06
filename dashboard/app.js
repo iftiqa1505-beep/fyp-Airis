@@ -344,7 +344,13 @@
     renderAll();
   }
 
+  function syncNarrowClass() {
+    document.body.classList.toggle("andon-narrow", window.innerWidth <= 900);
+  }
+
   buildMetricCards();
+  syncNarrowClass();
+  window.addEventListener("resize", syncNarrowClass);
   tickClock();
   setInterval(tickClock, 1000);
   setInterval(renderAll, 5000);
