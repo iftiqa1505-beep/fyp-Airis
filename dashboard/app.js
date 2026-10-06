@@ -1,5 +1,5 @@
 (function () {
-  // Freshness uses browser receive time (not ESP clock). Boards publish ~15s.
+  // Boards publish ~15s. LIVE/STALE is based on ESP updatedAt (not page load).
   const WEATHER_STALE_MS = 90000;
   const AIR_STALE_MS = 90000;
 
@@ -82,9 +82,9 @@
 
   function isFresh(data, staleMs) {
     if (!data) return false;
-    const receivedAt = Number(data.receivedAtMs);
-    if (!receivedAt) return false;
-    return Date.now() - receivedAt <= staleMs;
+    const updatedAt = Number(data.updatedAt);
+    if (!updatedAt) return false;
+    return Date.now() - updatedAt * 1000 <= staleMs;
   }
 
   function freshness(data, staleMs) {
@@ -197,7 +197,6 @@
       out[k] = n ? sum / n : null;
     });
     out.updatedAt = Math.max.apply(null, rows.map((r) => Number(r.updatedAt) || 0));
-    out.receivedAtMs = Math.max.apply(null, rows.map((r) => Number(r.receivedAtMs) || 0));
     return out;
   }
 
@@ -335,12 +334,7 @@
   }
 
   function setStation(id, data) {
-    if (data && typeof data === "object") {
-      data.receivedAtMs = Date.now();
-      state[id] = data;
-    } else {
-      state[id] = null;
-    }
+    state[id] = data && typeof data === "object" ? data : null;
     renderAll();
   }
 
@@ -359,22 +353,21 @@
       String(window.AIRIS_FIREBASE_CONFIG.apiKey || "").includes("YOUR_")) {
     console.warn("Firebase config missing — andon demo preview.");
     const now = Math.floor(Date.now() / 1000);
-    const receivedAtMs = Date.now();
     state["weather-a"] = {
       temperature: 28.4, humidity: 72.0, pressure: 1008.2,
-      rainfall: 1.4, windSpeed: 1.75, updatedAt: now, receivedAtMs: receivedAtMs
+      rainfall: 1.4, windSpeed: 1.75, updatedAt: now
     };
     state["weather-b"] = {
       temperature: 29.1, humidity: 68.5, pressure: 1007.6,
-      rainfall: 1.1, windSpeed: 2.10, updatedAt: now, receivedAtMs: receivedAtMs
+      rainfall: 1.1, windSpeed: 2.10, updatedAt: now
     };
     state["air-a"] = {
       aqi: 42, dust: 11.5, co2: 612.0, nh3: 0.42, benzene: 0.018,
-      alcohol: 0.31, toluene: 0.021, acetone: 0.015, updatedAt: now, receivedAtMs: receivedAtMs
+      alcohol: 0.31, toluene: 0.021, acetone: 0.015, updatedAt: now
     };
     state["air-b"] = {
       aqi: 48, dust: 14.2, co2: 640.0, nh3: 0.55, benzene: 0.022,
-      alcohol: 0.28, toluene: 0.019, acetone: 0.017, updatedAt: now, receivedAtMs: receivedAtMs
+      alcohol: 0.28, toluene: 0.019, acetone: 0.017, updatedAt: now
     };
     renderAll();
     return;
