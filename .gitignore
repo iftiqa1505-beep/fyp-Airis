@@ -1,0 +1,11 @@
+# Local secrets — never commit
+secrets.h
+**/secrets.h
+dashboard/config.js
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/

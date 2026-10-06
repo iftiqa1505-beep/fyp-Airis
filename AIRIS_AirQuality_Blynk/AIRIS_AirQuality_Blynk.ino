@@ -20,22 +20,28 @@
  *  - V18 : Alcohol Estimated (ppm)
  *  - V19 : Toluene Estimated (ppm)
  *  - V20 : Acetone Estimated (ppm)
+ *
+ * Also publishes latest + history JSON to Firebase (see secrets.h).
+ * Copy secrets.example.h -> secrets.h before building.
  */
 
-// --- Blynk Template & Auth Credentials ---
-#define BLYNK_TEMPLATE_ID   "TMPL65_YHc2Ka"
-#define BLYNK_TEMPLATE_NAME "AIRIS AIR QUALITY"
-#define BLYNK_AUTH_TOKEN    "n9cYZkCacvmtfR7nuaZnLBR-_fMtr84Y"
+#include "secrets.h"
+
+// --- Blynk Template & Auth Credentials (from secrets.h) ---
+#define BLYNK_TEMPLATE_ID   BLYNK_TEMPLATE_ID_AQ
+#define BLYNK_TEMPLATE_NAME BLYNK_TEMPLATE_NAME_AQ
+#define BLYNK_AUTH_TOKEN    BLYNK_AUTH_TOKEN_AQ
 
 #define BLYNK_PRINT Serial
 
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
+#include "firebase_publish.h"
 
-// --- WiFi Credentials ---
-char ssid[] = "DLink2G-137E_R7";
-char pass[] = "admin_R7";
+// --- WiFi Credentials (from secrets.h) ---
+char ssid[] = WIFI_SSID;
+char pass[] = WIFI_PASS;
 
 // --- Power Saving WiFi Configuration ---
 // Default ESP32 Tx power is WIFI_POWER_19_5dBm (~240mA peak).
@@ -87,6 +93,10 @@ const float ACETONE_A  = 34.668, ACETONE_B  = -3.369;
 // --- Blynk Timer ---
 BlynkTimer timer;
 const unsigned long SEND_INTERVAL_MS = 2000; // Update Blynk & Serial every 2 seconds
+
+// Air history append cadence (latest snapshot still every SEND_INTERVAL_MS)
+const unsigned long AIR_HISTORY_INTERVAL_MS = 300000UL; // 5 minutes — ML-friendly, saves Spark storage
+unsigned long lastAirHistoryMs = 0;
 
 // Function to calculate gas PPM using power law: PPM = a * (Ratio)^b
 float calculatePPM(float ratio, float a, float b) {
@@ -268,7 +278,33 @@ void sendSensorReadings() {
   Blynk.virtualWrite(V19, ppmToluene);    // V19: Toluene (ppm)
   Blynk.virtualWrite(V20, ppmAcetone);    // V20: Acetone (ppm)
 
-  // 5. Output Diagnostics to Serial Monitor
+  // 5. Dual-publish to Firebase (latest always; history every 5 min)
+  unsigned long ts = firebaseUnixTime();
+  char pathLatest[64];
+  char pathHist[80];
+  snprintf(pathLatest, sizeof(pathLatest), "/airis/air/%s", STATION_ID);
+  snprintf(pathHist, sizeof(pathHist), "/airis/history/air/%s", STATION_ID);
+
+  char json[420];
+  snprintf(json, sizeof(json),
+           "{\"stationId\":\"%s\",\"aqi\":%d,\"dust\":%.1f,\"co2\":%.1f,\"nh3\":%.2f,"
+           "\"benzene\":%.3f,\"alcohol\":%.2f,\"toluene\":%.3f,\"acetone\":%.3f,\"updatedAt\":%lu}",
+           STATION_ID, aqi, dustDensity, ppmCO2, ppmNH3, ppmBenzene,
+           ppmAlcohol, ppmToluene, ppmAcetone, ts);
+  firebasePutLatest(pathLatest, json);
+
+  if (lastAirHistoryMs == 0 || (millis() - lastAirHistoryMs) >= AIR_HISTORY_INTERVAL_MS) {
+    lastAirHistoryMs = millis();
+    char hist[420];
+    snprintf(hist, sizeof(hist),
+             "{\"stationId\":\"%s\",\"aqi\":%d,\"dust\":%.1f,\"co2\":%.1f,\"nh3\":%.2f,"
+             "\"benzene\":%.3f,\"alcohol\":%.2f,\"toluene\":%.3f,\"acetone\":%.3f,\"ts\":%lu}",
+             STATION_ID, aqi, dustDensity, ppmCO2, ppmNH3, ppmBenzene,
+             ppmAlcohol, ppmToluene, ppmAcetone, ts);
+    firebasePostHistory(pathHist, hist);
+  }
+
+  // 6. Output Diagnostics to Serial Monitor
   Serial.println("=========================================================");
   Serial.print("[Blynk] Data pushed at millis: ");
   Serial.println(millis());
@@ -295,7 +331,11 @@ void setup() {
 
   Serial.println("=========================================================");
   Serial.println(" AIRIS AIR QUALITY - ESP32 Blynk Station Initializing... ");
+  Serial.printf(" Station ID: %s\n", STATION_ID);
   Serial.println("=========================================================");
+  if (strncmp(STATION_ID, "air-", 4) != 0) {
+    Serial.println("ERROR: Set STATION_ID to \"air-a\" or \"air-b\" in secrets.h before flashing!");
+  }
 
   // Calibrate MQ-135 clean air baseline
   calibrateMQ135();
@@ -309,10 +349,12 @@ void setup() {
   WiFi.setSleep(true); // Modem Sleep: reduces idle WiFi current from ~80mA to ~20-30mA
   Serial.println("Power Saving Active: WiFi Tx Power set to 11 dBm & Modem Sleep enabled.");
 
+  firebaseSyncTime();
+
   // Setup periodic non-blocking sensor transmission
   timer.setInterval(SEND_INTERVAL_MS, sendSensorReadings);
 
-  Serial.println("System Ready! Streaming data to Blynk Cloud...");
+  Serial.println("System Ready! Streaming to Blynk + Firebase...");
 }
 
 void loop() {

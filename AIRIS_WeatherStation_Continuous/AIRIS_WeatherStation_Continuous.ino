@@ -8,17 +8,20 @@
  *   • DFRobot SEN0575       – Tipping-Bucket Rainfall          (I2C 0x1D)
  *   • NPN Anemometer        – Wind Speed via pulse counting     (GPIO 14)
  *
- * Cloud:  Blynk IoT (V0–V4)
+ * Cloud:  Blynk IoT (V0–V4) + Firebase RTDB (latest + history for ML)
  * Mode:   Continuous operation — samples and uploads every 15 seconds
- *         for live Blynk dashboard monitoring.
+ *         for live Blynk / AIRIS dashboard monitoring.
  *
  * Target: Arduino IDE / PlatformIO (ESP32 Arduino Core ≥ 2.x)
+ * Setup:  Copy secrets.example.h → secrets.h before building.
  ******************************************************************************/
 
+#include "secrets.h"
+
 /* ─── Blynk Template Credentials (set BEFORE #include) ──────────────────── */
-#define BLYNK_TEMPLATE_ID "TMPL609J6oWv_"
-#define BLYNK_TEMPLATE_NAME "AIRIS WEATHER STATION"
-#define BLYNK_AUTH_TOKEN "2Ir0viZbGqMQeK2ID2dYUuIh40aoQvp1"
+#define BLYNK_TEMPLATE_ID   BLYNK_TEMPLATE_ID_WX
+#define BLYNK_TEMPLATE_NAME BLYNK_TEMPLATE_NAME_WX
+#define BLYNK_AUTH_TOKEN    BLYNK_AUTH_TOKEN_WX
 
 #define BLYNK_NO_FANCY_LOGO
 #define BLYNK_PRINT Serial
@@ -30,10 +33,7 @@
 #include <Adafruit_BME280.h>
 #include <DFRobot_RainfallSensor.h>
 #include <BlynkSimpleEsp32.h>
-
-/* ─── Wi-Fi Credentials ─────────────────────────────────────────────────── */
-#define WIFI_SSID       "DLink2G-137E_R7"             // Replace with your Wi-Fi SSID
-#define WIFI_PASS       "admin_R7"         // Replace with your Wi-Fi password
+#include "firebase_publish.h"
 
 /* ─── GPIO Pin Definitions ──────────────────────────────────────────────── */
 #define PIN_I2C_SDA       21    // Shared I2C data  (BME280 + SEN0575)
@@ -206,7 +206,11 @@ void setup() {
 
     Serial.println(F("\n════════════════════════════════════════════════"));
     Serial.println(F("  AI-RIS Weather Station — CONTINUOUS MODE"));
+    Serial.printf("  Station ID: %s\n", STATION_ID);
     Serial.println(F("════════════════════════════════════════════════"));
+    if (strncmp(STATION_ID, "weather-", 8) != 0) {
+        Serial.println(F("ERROR: Set STATION_ID to \"weather-a\" or \"weather-b\" in secrets.h before flashing!"));
+    }
 
     /* ── I2C & Sensors ───────────────────────────────────────────────────── */
     Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
@@ -252,6 +256,8 @@ void setup() {
     } else {
         Serial.println(F("[NET]  Blynk not connected — will retry in loop."));
     }
+
+    firebaseSyncTime();
 
     Serial.println(F("[SYS]  Initialisation complete. Entering main loop.\n"));
 
@@ -300,6 +306,29 @@ void loop() {
         } else {
             Serial.println(F("[NET]  Blynk offline — skipping upload, retrying…"));
             Blynk.connect(4000);  // Quick reconnect attempt
+        }
+
+        /* ── Dual-publish to Firebase (latest + history every ~15 s) ─────── */
+        {
+            unsigned long ts = firebaseUnixTime();
+            char pathLatest[64];
+            char pathHist[80];
+            snprintf(pathLatest, sizeof(pathLatest), "/airis/weather/%s", STATION_ID);
+            snprintf(pathHist, sizeof(pathHist), "/airis/history/weather/%s", STATION_ID);
+
+            char json[320];
+            snprintf(json, sizeof(json),
+                     "{\"stationId\":\"%s\",\"temperature\":%.2f,\"humidity\":%.1f,"
+                     "\"pressure\":%.2f,\"rainfall\":%.2f,\"windSpeed\":%.2f,\"updatedAt\":%lu}",
+                     STATION_ID, temperature, humidity, pressure, rainfall, windSpeed, ts);
+            firebasePutLatest(pathLatest, json);
+
+            char hist[320];
+            snprintf(hist, sizeof(hist),
+                     "{\"stationId\":\"%s\",\"temperature\":%.2f,\"humidity\":%.1f,"
+                     "\"pressure\":%.2f,\"rainfall\":%.2f,\"windSpeed\":%.2f,\"ts\":%lu}",
+                     STATION_ID, temperature, humidity, pressure, rainfall, windSpeed, ts);
+            firebasePostHistory(pathHist, hist);
         }
 
         /* ── Start the next wind sampling window ─────────────────────────── */

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AIRIS Andon Display</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="andon">
+  <header class="andon-header">
+    <div class="andon-brand-block">
+      <p class="brand">AIRIS</p>
+      <h1>Weather &amp; Air Quality</h1>
+    </div>
+    <div class="andon-system" id="system-status" data-level="wait">
+      <span class="system-lamp" aria-hidden="true"></span>
+      <span class="system-text" id="system-text">WAITING</span>
+    </div>
+    <time class="andon-clock" id="andon-clock">—:—:—</time>
+  </header>
+
+  <main class="andon-main">
+    <section class="andon-hero" aria-label="Yard status">
+      <article class="andon-kpi andon-kpi-aqi" id="compound-air-panel">
+        <div class="kpi-head">
+          <h2>Yard AQI</h2>
+          <span class="badge" id="compound-aq-status">—</span>
+        </div>
+        <div class="aqi-hero">
+          <span class="aqi-value" id="compound-aq-aqi">—</span>
+          <span class="aqi-label" id="compound-aq-aqi-label">—</span>
+          <span class="expected">Normal (Good) 0–50</span>
+        </div>
+        <p class="updated" id="compound-aq-updated">—</p>
+      </article>
+
+      <article class="andon-kpi" id="compound-weather-panel">
+        <div class="kpi-head">
+          <h2>Yard Weather</h2>
+          <span class="badge" id="compound-wx-status">—</span>
+        </div>
+        <div class="metrics metrics-hero" data-prefix="compound-wx" data-kind="weather" data-andon="hero"></div>
+        <p class="updated" id="compound-wx-updated">—</p>
+      </article>
+    </section>
+
+    <section class="andon-secondary" aria-label="Air metrics">
+      <div class="metrics metrics-secondary" data-prefix="compound-aq" data-kind="air" data-andon="secondary"></div>
+    </section>
+
+    <section class="andon-stations" aria-label="Station health">
+      <h2 class="stations-label">Stations</h2>
+      <div class="station-strip">
+        <article class="station-cell" id="wx-a-panel" data-station="weather-a">
+          <div class="station-top">
+            <h3>Weather A</h3>
+            <span class="badge" id="wx-a-status">—</span>
+          </div>
+          <p class="station-primary"><span id="wx-a-temp">—</span><small>°C</small></p>
+          <span class="expected">Normal 24–34 °C</span>
+          <p class="updated" id="wx-a-updated">—</p>
+        </article>
+        <article class="station-cell" id="wx-b-panel" data-station="weather-b">
+          <div class="station-top">
+            <h3>Weather B</h3>
+            <span class="badge" id="wx-b-status">—</span>
+          </div>
+          <p class="station-primary"><span id="wx-b-temp">—</span><small>°C</small></p>
+          <span class="expected">Normal 24–34 °C</span>
+          <p class="updated" id="wx-b-updated">—</p>
+        </article>
+        <article class="station-cell" id="aq-a-panel" data-station="air-a">
+          <div class="station-top">
+            <h3>Air A</h3>
+            <span class="badge" id="aq-a-status">—</span>
+          </div>
+          <p class="station-primary"><span id="aq-a-aqi">—</span><small>AQI</small></p>
+          <span class="expected">Normal (Good) 0–50</span>
+          <p class="updated" id="aq-a-updated">—</p>
+        </article>
+        <article class="station-cell" id="aq-b-panel" data-station="air-b">
+          <div class="station-top">
+            <h3>Air B</h3>
+            <span class="badge" id="aq-b-status">—</span>
+          </div>
+          <p class="station-primary"><span id="aq-b-aqi">—</span><small>AQI</small></p>
+          <span class="expected">Normal (Good) 0–50</span>
+          <p class="updated" id="aq-b-updated">—</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
