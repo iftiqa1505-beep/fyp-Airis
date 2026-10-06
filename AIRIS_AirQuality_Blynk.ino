@@ -12,7 +12,7 @@
  *  - MQ-135 Analog Out (AOUT) : GPIO 35 (ADC1_CH7 - via 10k/20k voltage divider)
  * 
  * Blynk Virtual Pin Mapping:
- *  - V11 : Air Pollution Reading from MQ-135 (Raw ADC / Pollution Index)
+ *  - V11 : Composite AQI (max of dust + MQ-135 gas sub-indices, 0-500)
  *  - V13 : Dust Density from GP2Y Sharp Sensor (ug/m3)
  *  - V15 : CO2 Estimated (ppm)
  *  - V16 : NH3 (Ammonia) Estimated (ppm)
@@ -130,7 +130,7 @@ float readMQ135Voltage(int &rawOut) {
   return pinVoltage * MQ135_DIVIDER_RATIO;
 }
 
-// Calculates True Air Quality Index (AQI 0 - 500) from MQ-135 ratio (Rs / Ro)
+// Calculates gas/VOC sub-index (AQI 0 - 500) from MQ-135 ratio (Rs / Ro)
 // Clean air: ratio ~3.6 -> AQI 15 - 35 (Good)
 // Polluted air: ratio drops towards 0.5 -> AQI rises up to 500 (Hazardous)
 int calculateMQ135AQI(float ratio) {
@@ -158,6 +158,36 @@ int calculateMQ135AQI(float ratio) {
     // 301 - 500: Hazardous
     float aqi = 301.0 + ((0.6 - ratio) / 0.6) * 199.0;
     return (int)constrain(aqi, 301, 500);
+  }
+}
+
+// Linear interpolation helper for dust AQI breakpoints
+int interpolateAQI(float conc, float cLow, float cHigh, float iLow, float iHigh) {
+  float aqi = ((iHigh - iLow) / (cHigh - cLow)) * (conc - cLow) + iLow;
+  return (int)constrain(aqi, iLow, iHigh);
+}
+
+// Dust sub-index using EPA PM2.5 breakpoints (ug/m3 -> AQI 0-500).
+// Note: GP2Y1010AU0F reports optical dust density, not certified PM2.5 FEM data.
+// These breakpoints produce a usable AIRIS FYP index, not a regulatory AQI claim.
+int calculateDustAQI(float ugm3) {
+  if (ugm3 < 0.0) ugm3 = 0.0;
+  if (ugm3 > 500.4) ugm3 = 500.4;
+
+  if (ugm3 <= 12.0) {
+    return interpolateAQI(ugm3, 0.0, 12.0, 0, 50);
+  } else if (ugm3 <= 35.4) {
+    return interpolateAQI(ugm3, 12.1, 35.4, 51, 100);
+  } else if (ugm3 <= 55.4) {
+    return interpolateAQI(ugm3, 35.5, 55.4, 101, 150);
+  } else if (ugm3 <= 150.4) {
+    return interpolateAQI(ugm3, 55.5, 150.4, 151, 200);
+  } else if (ugm3 <= 250.4) {
+    return interpolateAQI(ugm3, 150.5, 250.4, 201, 300);
+  } else if (ugm3 <= 350.4) {
+    return interpolateAQI(ugm3, 250.5, 350.4, 301, 400);
+  } else {
+    return interpolateAQI(ugm3, 350.5, 500.4, 401, 500);
   }
 }
 
@@ -208,8 +238,15 @@ void sendSensorReadings() {
   float rs = MQ135_RL * (MQ135_VC - mq135ActualVoltage) / mq135ActualVoltage;
   float ratio = rs / mq135_Ro;
 
-  // Calculate true Air Quality Index (AQI 0 - 500)
+  // Calculate gas/VOC sub-index from MQ-135 ratio
   int aqiMQ135 = calculateMQ135AQI(ratio);
+
+  // Dust sub-index (EPA PM2.5-style breakpoints on GP2Y optical density)
+  int dustAQI = calculateDustAQI(dustDensity);
+
+  // Composite AIRIS AQI: worst sub-index wins (EPA-style)
+  int aqi = max(dustAQI, aqiMQ135);
+  const char* aqiDriver = (dustAQI >= aqiMQ135) ? "dust" : "gas";
 
   // 3. Compute Individual Gas Concentrations (PPM)
   // Note: 400.0 is the natural atmospheric background CO2 level on Earth
@@ -221,8 +258,8 @@ void sendSensorReadings() {
   float ppmAcetone = calculatePPM(ratio, ACETONE_A, ACETONE_B);
 
   // 4. Send Data to Blynk Virtual Pins
-  // V11: Converted to actual AQI (0-500 scale). In a clean room, this will now show ~15 - 35 (Good)!
-  Blynk.virtualWrite(V11, aqiMQ135);
+  // V11: Composite AQI = max(dust sub-index, MQ-135 gas sub-index)
+  Blynk.virtualWrite(V11, aqi);
   Blynk.virtualWrite(V13, dustDensity);   // V13: Dust density (ug/m3)
   Blynk.virtualWrite(V15, ppmCO2);        // V15: Estimated CO2 (ppm)
   Blynk.virtualWrite(V16, ppmNH3);        // V16: Estimated NH3 (ppm)
@@ -238,7 +275,8 @@ void sendSensorReadings() {
 
   Serial.printf("[DUST]   Vo: %.3f V | Density: %.1f ug/m3 -> [V13]\n", dustVo, dustDensity);
   Serial.printf("[MQ-135] Raw ADC: %d | Voltage: %.2f V | Ratio: %.2f\n", mq135Raw, mq135ActualVoltage, ratio);
-  Serial.printf("[AQI]    Air Quality Index: %d (0-500 scale) -> [V11]\n", aqiMQ135);
+  Serial.printf("[AQI]    dust=%d gas=%d -> composite=%d (%s) -> [V11]\n",
+                dustAQI, aqiMQ135, aqi, aqiDriver);
   Serial.printf("[GASES]  CO2: %.1f ppm [V15] | NH3: %.2f ppm [V16] | Benzene: %.3f ppm [V17]\n", ppmCO2, ppmNH3, ppmBenzene);
   Serial.printf("         Alcohol: %.2f ppm [V18] | Toluene: %.3f ppm [V19] | Acetone: %.3f ppm [V20]\n", ppmAlcohol, ppmToluene, ppmAcetone);
 }
