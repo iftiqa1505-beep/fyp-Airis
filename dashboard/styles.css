@@ -446,19 +446,235 @@ body.andon {
   flex-shrink: 0;
 }
 
-@media (max-width: 640px) {
-  body.andon { overflow: auto; cursor: auto; }
+/* ——— Phone / narrow: scrollable andon, readable tiles ——— */
+@media (max-width: 900px) {
+  body.andon {
+    overflow: auto;
+    cursor: auto;
+    min-height: 100%;
+    height: auto;
+  }
+
+  .andon-header {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "brand status"
+      "brand clock";
+    gap: 0.55rem 0.85rem;
+    padding: 0.85rem 1rem 0.7rem;
+    align-items: start;
+  }
+
+  .andon-brand-block { grid-area: brand; min-width: 0; }
+  .andon-system { grid-area: status; justify-self: end; }
+  .andon-clock { grid-area: clock; justify-self: end; align-self: end; }
+
+  .brand {
+    font-size: 0.72rem;
+    letter-spacing: 0.28em;
+  }
+
+  .andon-header h1 {
+    font-size: 1.35rem;
+    line-height: 1.15;
+  }
+
+  .andon-system {
+    padding: 0.4rem 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .system-lamp {
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+
+  .system-text {
+    font-size: 0.95rem;
+  }
+
+  .andon-clock {
+    font-size: 1.35rem;
+    line-height: 1;
+  }
+
   .andon-main {
     height: auto;
-    grid-template-rows: auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 0.85rem 1rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
   }
-  .andon-hero,
+
+  .andon-hero {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .andon-kpi {
+    padding: 0.9rem 1rem 0.85rem;
+    border-radius: 14px;
+    border-width: 2px;
+  }
+
+  .kpi-head {
+    margin-bottom: 0.55rem;
+  }
+
+  .kpi-head h2 {
+    font-size: 0.85rem;
+  }
+
+  .badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.55rem;
+  }
+
+  .aqi-hero {
+    flex: 0 0 auto;
+    padding: 0.25rem 0 0.15rem;
+  }
+
+  .aqi-value {
+    font-size: clamp(3.4rem, 18vw, 5.5rem);
+  }
+
+  .aqi-label {
+    font-size: 1.15rem;
+  }
+
+  .aqi-hero .expected {
+    font-size: 0.85rem;
+  }
+
+  .metrics-hero,
+  .metrics-secondary {
+    display: grid;
+    height: auto;
+    flex: 0 0 auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
+    gap: 0.55rem;
+    align-content: start;
+  }
+
+  .metrics-hero .metric:nth-child(1),
+  .metrics-hero .metric:nth-child(2),
+  .metrics-hero .metric:nth-child(3),
+  .metrics-hero .metric:nth-child(4),
+  .metrics-hero .metric:nth-child(5) {
+    grid-column: auto;
+  }
+
+  /* Odd last weather tile (Rain/Wind count) spans full width when alone */
+  .metrics-hero .metric:nth-child(5):last-child {
+    grid-column: 1 / -1;
+  }
+
+  .metric {
+    container-type: normal;
+    min-height: 4.75rem;
+    padding: 0.65rem 0.7rem 0.7rem;
+    border-radius: 10px;
+    border-width: 2px;
+    gap: 0.2rem;
+  }
+
+  .metric .label {
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+  }
+
+  .metric .value-row {
+    flex: 0 0 auto;
+  }
+
+  .metric .value,
+  .metrics-secondary .metric .value {
+    font-size: 1.55rem;
+  }
+
+  .metric .unit {
+    font-size: 0.8rem;
+  }
+
+  .metric .expected,
+  .station-cell .expected {
+    font-size: 0.68rem;
+    white-space: normal;
+    margin-top: 0.15rem;
+  }
+
+  .updated {
+    margin-top: 0.45rem;
+    font-size: 0.72rem;
+  }
+
+  .andon-stations {
+    gap: 0.5rem;
+  }
+
+  .stations-label {
+    font-size: 0.72rem;
+  }
+
+  .station-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+
+  .station-cell {
+    container-type: normal;
+    min-height: 6.5rem;
+    padding: 0.7rem 0.75rem 0.75rem;
+    border-radius: 12px;
+    border-width: 2px;
+    gap: 0.25rem;
+  }
+
+  .station-top h3 {
+    font-size: 0.85rem;
+  }
+
+  .station-primary {
+    font-size: 1.85rem;
+    margin: 0.15rem 0 0;
+    flex: 0 0 auto;
+  }
+
+  .station-cell .updated {
+    font-size: 0.68rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .andon-header {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "brand"
+      "status"
+      "clock";
+  }
+
+  .andon-system,
+  .andon-clock {
+    justify-self: start;
+  }
+
+  .andon-clock {
+    font-size: 1.2rem;
+  }
+
   .metrics-hero,
   .metrics-secondary,
   .station-strip {
     grid-template-columns: 1fr;
   }
-  .andon-header {
-    grid-template-columns: 1fr;
+
+  .metrics-hero .metric:nth-child(5):last-child {
+    grid-column: auto;
   }
 }
