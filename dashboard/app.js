@@ -1,6 +1,7 @@
 (function () {
   const WEATHER_STALE_MS = 60000;
-  const AIR_STALE_MS = 10000;
+  // Air firmware publishes every 15s — keep window > interval + network jitter
+  const AIR_STALE_MS = 45000;
 
   const WEATHER_METRICS = [
     { key: "temperature", id: "temp", label: "Temp", unit: "°C", digits: 1, ok: [24, 34], warnPad: 3, expected: "Normal 24–34" },
